@@ -200,7 +200,7 @@ impl<'a> CharacterQueryHandlerCxLikeCpp<'a> {
         self.publication_like_cpp().send_packet_realm(&response);
     }
 
-    /// CMSG_QUERY_NPC_TEXT — client requests NPC text for gossip.
+    /// C++ `WorldSession::HandleNpcTextQueryOpcode` (QueryHandler.cpp:175-199).
     pub async fn handle_query_npc_text(&mut self, query: QueryNpcText) {
         debug!(
             "QueryNpcText: text_id={} for account {}",
@@ -208,10 +208,21 @@ impl<'a> CharacterQueryHandlerCxLikeCpp<'a> {
             self.hub.shared().core.account_id
         );
 
-        // For now, respond with a default "found" response.
-        // BroadcastTextID=0 tells the client to use local DB2 data for text.
-        self.publication_like_cpp()
-            .send_packet(&QueryNpcTextResponse::with_text(query.text_id, 0));
+        let response = match self.object_mgr.npc_text.get_like_cpp(query.text_id) {
+            Some(text) => QueryNpcTextResponse::from_options(
+                query.text_id,
+                text.probabilities,
+                text.broadcast_text_ids,
+            ),
+            None => QueryNpcTextResponse::not_found(query.text_id),
+        };
+        if !response.allow {
+            tracing::error!(
+                "HandleNpcTextQueryOpcode: no BroadcastTextID found for text {} in `npc_text table`",
+                query.text_id
+            );
+        }
+        self.publication_like_cpp().send_packet(&response);
     }
 
     /// CMSG_QUERY_PAGE_TEXT — answer a page-text chain query.

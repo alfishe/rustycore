@@ -106,6 +106,20 @@ pub struct PageTextCatalogPersistenceRowsLikeCpp {
     pub locales: Vec<PageTextLocalePersistenceRowLikeCpp>,
 }
 
+/// One raw `npc_text` row as C++ `ObjectMgr::LoadNPCText` (ObjectMgr.cpp:6279)
+/// selects it: `Probability0..7`, `BroadcastTextID0..7`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NpcTextPersistenceRowLikeCpp {
+    pub id: u32,
+    pub probabilities: [f32; 8],
+    pub broadcast_text_ids: [u32; 8],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NpcTextCatalogPersistenceRowsLikeCpp {
+    pub texts: Vec<NpcTextPersistenceRowLikeCpp>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum WorldQueryCatalogLoadOutcomeLikeCpp<T> {
     Loaded(T),
@@ -132,5 +146,12 @@ pub trait WorldQueryCatalogPersistencePortLikeCpp: Send + Sync {
     ) -> PersistenceFutureLikeCpp<
         '_,
         WorldQueryCatalogLoadOutcomeLikeCpp<PageTextCatalogPersistenceRowsLikeCpp>,
+    >;
+
+    fn load_npc_text_catalog_like_cpp(
+        &self,
+    ) -> PersistenceFutureLikeCpp<
+        '_,
+        WorldQueryCatalogLoadOutcomeLikeCpp<NpcTextCatalogPersistenceRowsLikeCpp>,
     >;
 }

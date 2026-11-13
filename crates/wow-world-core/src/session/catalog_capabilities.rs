@@ -89,6 +89,7 @@ pub struct ObjectMgrCatalogsLikeCpp {
     pub gameobject: Arc<wow_data::GameObjectQueryCatalogLikeCpp>,
     pub gameobject_quest_items: Arc<wow_data::GameObjectQuestItemStoreLikeCpp>,
     pub page_text: Arc<wow_data::PageTextCatalogLikeCpp>,
+    pub npc_text: Arc<wow_data::NpcTextCatalogLikeCpp>,
 }
 
 /// Process-owned support and feature-system policy borrowed by Session edges.

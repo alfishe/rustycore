@@ -184,6 +184,10 @@ pub(crate) mod live_tests {
             "page text catalog",
             query.load_page_text_catalog_like_cpp().await,
         );
+        query_loaded(
+            "npc text catalog",
+            query.load_npc_text_catalog_like_cpp().await,
+        );
 
         let object = MariaDbWorldObjectCatalogPersistenceAdapterLikeCpp::new(Arc::clone(&world_db));
         loaded(

@@ -2349,16 +2349,29 @@ async fn run_inner(
         crate::world::query_catalog::load_like_cpp(&world_query_catalog_persistence)
             .await
             .context("Failed to load immutable C++ ObjectMgr query catalogs")?;
+    // C++ LoadNPCText validates BroadcastTextIDs against sBroadcastTextStore.
+    let npc_text_catalog = {
+        let broadcast_texts = wow_data::BroadcastTextStore::load(&data_dir, &locale)
+            .context("Failed to load BroadcastText.db2 — check DataDir and DBC.Locale config")?;
+        crate::world::query_catalog::load_npc_text_like_cpp(
+            &world_query_catalog_persistence,
+            |id| broadcast_texts.get(id).is_some(),
+        )
+        .await
+        .context("Failed to load npc_text")?
+    };
     let object_mgr_catalogs = Arc::new(wow_world::session::ObjectMgrCatalogsLikeCpp {
         creature: Arc::new(creature_query_catalog),
         gameobject: Arc::new(gameobject_query_catalog),
         gameobject_quest_items: gameobject_quest_item_store,
         page_text: Arc::new(page_text_catalog),
+        npc_text: Arc::new(npc_text_catalog),
     });
     info!(
         creatures = object_mgr_catalogs.creature.len(),
         gameobjects = object_mgr_catalogs.gameobject.len(),
         pages = object_mgr_catalogs.page_text.len(),
+        npc_texts = object_mgr_catalogs.npc_text.len(),
         "Loaded immutable C++ ObjectMgr query capability"
     );
 
