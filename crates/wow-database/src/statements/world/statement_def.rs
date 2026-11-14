@@ -905,11 +905,18 @@ impl StatementDef for WorldStatements {
                 "qt.RewardFactionID5, qt.RewardFactionValue5, qt.RewardFactionOverride5, qt.RewardFactionCapIn5, ",
                 "qt.RewardFactionFlags, ",
                 "CAST(COALESCE(qta.RequiredSkillID, 0) AS UNSIGNED) AS RequiredSkillID, ",
-                "CAST(COALESCE(qta.RequiredSkillPoints, 0) AS UNSIGNED) AS RequiredSkillPoints ",
+                "CAST(COALESCE(qta.RequiredSkillPoints, 0) AS UNSIGNED) AS RequiredSkillPoints, ",
+                // C++ ObjectMgr::LoadQuests (ObjectMgr.cpp:4615/4618) reads these two
+                // per-quest rows in separate passes; both tables are keyed by ID,
+                // so a LEFT JOIN yields the same single value or the empty default.
+                "COALESCE(qor.RewardText, '') AS RewardText, ",
+                "COALESCE(qri.CompletionText, '') AS CompletionText ",
                 "FROM quest_template qt ",
                 "LEFT JOIN quest_template_addon qta ON qt.ID = qta.ID ",
                 "LEFT JOIN quest_reward_choice_items qrci ON qt.ID = qrci.QuestID ",
-                "LEFT JOIN quest_mail_sender qms ON qt.ID = qms.QuestId"
+                "LEFT JOIN quest_mail_sender qms ON qt.ID = qms.QuestId ",
+                "LEFT JOIN quest_offer_reward qor ON qt.ID = qor.ID ",
+                "LEFT JOIN quest_request_items qri ON qt.ID = qri.ID"
             ),
             Self::SEL_QUEST_OBJECTIVES => {
                 "SELECT ID, QuestID, Type, `Order`, StorageIndex, ObjectID, Amount, Flags, Flags2, ProgressBarWeight, Description FROM quest_objectives ORDER BY QuestID, `Order`"

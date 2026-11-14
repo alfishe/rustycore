@@ -76,6 +76,8 @@ fn quest_template(
         quest_description: String::new(),
         area_description: String::new(),
         quest_completion_log: String::new(),
+        offer_reward_text: String::new(),
+        request_items_text: String::new(),
         objectives,
         allowable_races: 0,
         allowable_classes: 0,

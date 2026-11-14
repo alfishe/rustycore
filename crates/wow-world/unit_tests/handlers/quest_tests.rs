@@ -180,6 +180,8 @@ fn quest_template(id: u32) -> QuestTemplate {
         quest_description: String::new(),
         area_description: String::new(),
         quest_completion_log: String::new(),
+        offer_reward_text: String::new(),
+        request_items_text: String::new(),
         objectives: Vec::new(),
         allowable_races: 0,
         allowable_classes: 0,
@@ -999,6 +1001,8 @@ mod item_3;
 mod item_4;
 #[path = "quest_tests/native_quest_log.rs"]
 mod native_quest_log;
+#[path = "quest_tests/offer_reward.rs"]
+mod offer_reward;
 #[path = "quest_tests/quest_1.rs"]
 mod quest_1;
 #[path = "quest_tests/quest_2.rs"]

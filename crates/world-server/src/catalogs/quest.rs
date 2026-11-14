@@ -68,6 +68,8 @@ pub(crate) async fn load_quests_like_cpp(
                 quest_description: r.quest_description,
                 area_description: r.area_description,
                 quest_completion_log: r.quest_completion_log,
+                offer_reward_text: r.offer_reward_text,
+                request_items_text: r.request_items_text,
                 objectives: Vec::new(),
                 allowable_races: r.allowable_races,
                 allowable_classes: r.allowable_classes,

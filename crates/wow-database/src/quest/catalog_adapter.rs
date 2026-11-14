@@ -79,6 +79,12 @@ impl MariaDbQuestCatalogPersistenceAdapterLikeCpp {
                     quest_description: result.try_read(41).unwrap_or_default(),
                     area_description: result.try_read(42).unwrap_or_default(),
                     quest_completion_log: result.try_read(43).unwrap_or_default(),
+                    // C++ `Quest::LoadQuestOfferReward` / `LoadQuestRequestItems`
+                    // (QuestDef.cpp:202/186): `_offerRewardText` = `RewardText`,
+                    // `_requestItemsText` = `CompletionText`; both stay empty
+                    // without a row, which the LEFT JOIN COALESCE reproduces.
+                    offer_reward_text: result.try_read(116).unwrap_or_default(),
+                    request_items_text: result.try_read(117).unwrap_or_default(),
                     allowable_races: read_u64(&result, 44).unwrap_or(0),
                     allowable_classes: read_u32(&result, 45).unwrap_or(0),
                     max_level: read_u32(&result, 46)

@@ -53,6 +53,10 @@ pub struct QuestTemplatePersistenceRowLikeCpp {
     pub quest_description: String,
     pub area_description: String,
     pub quest_completion_log: String,
+    /// `quest_offer_reward.RewardText` (C++ `Quest::LoadQuestOfferReward`).
+    pub offer_reward_text: String,
+    /// `quest_request_items.CompletionText` (C++ `Quest::LoadQuestRequestItems`).
+    pub request_items_text: String,
     pub allowable_races: u64,
     pub allowable_classes: u32,
     pub max_level: u8,
