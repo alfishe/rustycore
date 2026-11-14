@@ -126,6 +126,16 @@ pub struct QuestTemplate {
     pub quest_description: String,
     pub area_description: String,
     pub quest_completion_log: String,
+    /// C++ `Quest::GetOfferRewardText()` / `_offerRewardText`, loaded by
+    /// `Quest::LoadQuestOfferReward` (QuestDef.cpp:202) from
+    /// `quest_offer_reward.RewardText` (ObjectMgr.cpp:4618). Empty when the quest
+    /// has no `quest_offer_reward` row.
+    pub offer_reward_text: String,
+    /// C++ `Quest::GetRequestItemsText()` / `_requestItemsText`, loaded by
+    /// `Quest::LoadQuestRequestItems` (QuestDef.cpp:186) from
+    /// `quest_request_items.CompletionText` (ObjectMgr.cpp:4615). Empty when the
+    /// quest has no `quest_request_items` row.
+    pub request_items_text: String,
     // Objectives
     pub objectives: Vec<QuestObjective>,
 

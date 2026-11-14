@@ -102,4 +102,18 @@ impl QuestGiverCompleteQuestHostLikeCpp for WorldSession {
             auto_launched,
         )
     }
+
+    fn send_represented_quest_giver_offer_reward_like_cpp(
+        &mut self,
+        source_guid: ObjectGuid,
+        quest: &QuestTemplate,
+        auto_launched: bool,
+    ) {
+        wow_world_quest::send_represented_quest_giver_offer_reward_like_cpp(
+            self,
+            source_guid,
+            quest,
+            auto_launched,
+        )
+    }
 }

@@ -9,10 +9,10 @@
 //! registered `Opcodes.cpp:778` as `CMSG_QUEST_GIVER_COMPLETE_QUEST`,
 //! `STATUS_LOGGEDIN`/`PROCESS_INPLACE`. The body keeps its original parse, gates,
 //! order, log strings and packets; only the access path changed. The World session
-//! lends its hub (the represented reads, the disable manager and the offer-reward
-//! publication), while the shell-only capabilities (the represented quest gameplay
-//! snapshot, the eligibility/reward projections, the involved-source interaction
-//! check and the request-items publication) stay behind
+//! lends its hub (the represented reads and the disable manager), while the
+//! shell-only capabilities (the represented quest gameplay snapshot, the
+//! eligibility/reward projections, the involved-source interaction check and the
+//! request-items and offer-reward publications) stay behind
 //! [`QuestGiverCompleteQuestHostLikeCpp`].
 
 use std::sync::Arc;
@@ -24,13 +24,9 @@ use wow_data::disable_mgr::DISABLE_TYPE_QUEST;
 use wow_data::quest::{QuestStore, QuestTemplate};
 use wow_entities::PlayerQuestGameplayState;
 use wow_packet::WorldPacket;
-use wow_packet::packets::quest::QuestGiverOfferReward;
 use wow_world_core::session::HubRef;
 
-use crate::{
-    RepresentedQuestCompleteDialogLikeCpp, represented_quest_complete_dialog_like_cpp,
-    represented_quest_rewards_block_like_cpp,
-};
+use crate::{RepresentedQuestCompleteDialogLikeCpp, represented_quest_complete_dialog_like_cpp};
 
 /// C++ `QUEST_FLAGS_AUTO_COMPLETE` (`SharedDefines.h`); the World handler module
 /// declared the same value as `QUEST_FLAGS_AUTO_COMPLETE_LIKE_CPP`.
@@ -39,12 +35,12 @@ const QUEST_FLAGS_AUTO_COMPLETE_LIKE_CPP: u32 = 0x0001_0000;
 /// Capabilities of the quest-completion handler that the World shell still owns:
 /// the session hub, the represented quest-log snapshot, the eligibility/reward
 /// projections built from the canonical Player access plus the cfg(test)
-/// fixtures, the involved-source interaction check and the request-items
-/// publication. Each method is invoked at the exact point the World body invoked
+/// fixtures, the involved-source interaction check and the request-items and
+/// offer-reward publications. Each method is invoked at the exact point the World body invoked
 /// its counterpart, so no step value or resumption is needed.
 pub trait QuestGiverCompleteQuestHostLikeCpp {
     /// The session hub, which the moved body uses for the account log field, the
-    /// represented player guid, the disable manager and the offer-reward packet.
+    /// represented player guid and the disable manager.
     fn complete_quest_hub_ref_like_cpp(&self) -> HubRef<'_>;
 
     /// The session's loaded quest store (`sObjectMgr->GetQuestTemplate` source).
@@ -92,6 +88,15 @@ pub trait QuestGiverCompleteQuestHostLikeCpp {
         source_guid: ObjectGuid,
         quest: &QuestTemplate,
         can_complete: bool,
+        auto_launched: bool,
+    );
+
+    /// C++ `PlayerTalkClass->SendQuestGiverOfferReward` (GossipDef.cpp:538), which
+    /// needs the session Player for `Quest::BuildQuestRewards` (XP and money).
+    fn send_represented_quest_giver_offer_reward_like_cpp(
+        &mut self,
+        source_guid: ObjectGuid,
+        quest: &QuestTemplate,
         auto_launched: bool,
     );
 }
@@ -237,20 +242,7 @@ where
             );
         }
         RepresentedQuestCompleteDialogLikeCpp::OfferReward { auto_launched } => {
-            host.complete_quest_hub_ref_like_cpp()
-                .core
-                .packet_publication_access_like_cpp()
-                .send_packet(&QuestGiverOfferReward {
-                    giver_guid: guid,
-                    giver_creature_id: quest_giver_creature_id_from_source_like_cpp(guid),
-                    quest_id,
-                    quest_flags: [quest.flags, quest.flags_ex, quest.flags_ex2],
-                    suggested_party_members: quest.suggested_group_num,
-                    rewards: represented_quest_rewards_block_like_cpp(quest),
-                    title: quest.log_title.clone(),
-                    reward_text: quest.quest_completion_log.clone(),
-                    auto_launched,
-                });
+            host.send_represented_quest_giver_offer_reward_like_cpp(guid, quest, auto_launched);
         }
     }
 }

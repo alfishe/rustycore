@@ -273,6 +273,56 @@ fn quest_template_statement_loads_reward_choice_item_types_like_cpp() {
     );
 }
 
+/// Split the top-level `SELECT ... FROM` column list on commas outside parentheses.
+fn quest_template_select_columns_like_cpp(sql: &str) -> Vec<String> {
+    let select = sql
+        .strip_prefix("SELECT ")
+        .and_then(|rest| rest.split(" FROM quest_template qt ").next())
+        .expect("quest template SELECT list");
+    let mut columns = Vec::new();
+    let mut depth = 0usize;
+    let mut current = String::new();
+    for ch in select.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => {
+                columns.push(current.trim().to_string());
+                current.clear();
+                continue;
+            }
+            _ => {}
+        }
+        current.push(ch);
+    }
+    columns.push(current.trim().to_string());
+    columns
+}
+
+#[test]
+fn quest_template_statement_loads_offer_reward_and_request_items_text_like_cpp() {
+    // C++ ObjectMgr::LoadQuests (ObjectMgr.cpp:4615/4618) ->
+    // Quest::LoadQuestRequestItems / LoadQuestOfferReward (QuestDef.cpp:186/202).
+    let sql = WorldStatements::SEL_QUEST_TEMPLATE.sql();
+    assert!(sql.contains("LEFT JOIN quest_offer_reward qor ON qt.ID = qor.ID"));
+    assert!(sql.contains("LEFT JOIN quest_request_items qri ON qt.ID = qri.ID"));
+
+    // The MariaDB adapter reads these at fixed indices 116 and 117.
+    let columns = quest_template_select_columns_like_cpp(sql);
+    assert_eq!(columns.len(), 118);
+    assert_eq!(
+        columns[115],
+        "CAST(COALESCE(qta.RequiredSkillPoints, 0) AS UNSIGNED) AS RequiredSkillPoints"
+    );
+    assert_eq!(columns[116], "COALESCE(qor.RewardText, '') AS RewardText");
+    assert_eq!(
+        columns[117],
+        "COALESCE(qri.CompletionText, '') AS CompletionText"
+    );
+    // Not confused with the quest_template text columns.
+    assert_eq!(columns[43], "qt.QuestCompletionLog");
+}
+
 #[test]
 fn gameobject_quest_relation_statements_match_cpp_sql_exactly() {
     let starter_sql = WorldStatements::SEL_GAMEOBJECT_QUEST_STARTERS.sql();

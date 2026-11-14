@@ -65,10 +65,13 @@ pub fn represented_quest_complete_dialog_like_cpp(
     }
 }
 
-/// C++ `WorldPackets::Quest::QuestRewards` projection for one quest template.
+/// Template-only part of C++ `Quest::BuildQuestRewards` (QuestDef.cpp:446).
+///
+/// `Money` and `XP` depend on the player (`Player::GetQuestMoneyReward` /
+/// `Player::GetQuestXPReward`) and are left at zero here; packet senders use
+/// `quest_rewards_block_for_player_like_cpp`, which fills them from the session.
 pub fn represented_quest_rewards_block_like_cpp(quest: &QuestTemplate) -> QuestRewardsBlock {
     let mut rewards = QuestRewardsBlock {
-        money: quest.reward_money_difficulty as i32,
         completion_spell: quest.reward_spell as i32,
         ..QuestRewardsBlock::default()
     };

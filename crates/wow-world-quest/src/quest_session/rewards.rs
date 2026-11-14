@@ -322,21 +322,45 @@ pub fn can_reward_quest_represented_bounded_like_cpp<H: QuestSessionHostLikeCpp>
     true
 }
 
+/// C++ `Quest::BuildQuestRewards(rewards, player)` (QuestDef.cpp:446), used by
+/// `PlayerMenu::SendQuestGiverQuestDetails` (GossipDef.cpp:501) and
+/// `PlayerMenu::SendQuestGiverOfferReward` (GossipDef.cpp:574).
+///
+/// The template-only part comes from
+/// [`crate::represented_quest_rewards_block_like_cpp`]; the player-dependent
+/// `Money = player->GetQuestMoneyReward(this)` and
+/// `XP = player->GetQuestXPReward(this)` are filled here, so the dialog shows
+/// the XP that `Player::RewardQuest` later grants through the same
+/// `GetQuestXPReward` projection.
+pub fn quest_rewards_block_for_player_like_cpp<H: QuestSessionHostLikeCpp>(
+    host: &H,
+    quest: &wow_data::quest::QuestTemplate,
+) -> QuestRewardsBlock {
+    let mut rewards = crate::represented_quest_rewards_block_like_cpp(quest);
+    rewards.money = i32::try_from(quest_money_reward_like_cpp(host, quest)).unwrap_or(i32::MAX);
+    rewards.xp = i32::try_from(quest_xp_reward_like_cpp(host, quest)).unwrap_or(i32::MAX);
+    rewards
+}
+
+/// C++ `PlayerMenu::SendQuestGiverOfferReward` (GossipDef.cpp:538):
+/// `RewardText = quest->GetOfferRewardText()` (GossipDef.cpp:543) and
+/// `BuildQuestRewards(offer.Rewards, player)` (GossipDef.cpp:574).
 pub fn send_represented_quest_giver_offer_reward_like_cpp<H: QuestSessionHostLikeCpp>(
     host: &mut H,
     source_guid: ObjectGuid,
     quest: &wow_data::quest::QuestTemplate,
     auto_launched: bool,
 ) {
+    let rewards = quest_rewards_block_for_player_like_cpp(host, quest);
     host.send_packet(&QuestGiverOfferReward {
         giver_guid: source_guid,
         giver_creature_id: quest_giver_creature_id_from_source_like_cpp(source_guid),
         quest_id: quest.id,
         quest_flags: [quest.flags, quest.flags_ex, quest.flags_ex2],
         suggested_party_members: quest.suggested_group_num,
-        rewards: crate::represented_quest_rewards_block_like_cpp(quest),
+        rewards,
         title: quest.log_title.clone(),
-        reward_text: quest.quest_completion_log.clone(),
+        reward_text: quest.offer_reward_text.clone(),
         auto_launched,
     });
 }

@@ -456,7 +456,8 @@ pub fn send_represented_quest_giver_request_items_with_completion_like_cpp<
         currency,
         status_flags: if can_complete { 0xFF } else { 0xFD },
         title: quest.log_title.clone(),
-        completion_text: quest.area_description.clone(),
+        // C++ `packet.CompletionText = quest->GetRequestItemsText()` (GossipDef.cpp:619).
+        completion_text: quest.request_items_text.clone(),
         auto_launched,
     });
 }
@@ -477,6 +478,9 @@ pub fn send_represented_quest_giver_quest_details_like_cpp<H: QuestSessionHostLi
             obj_type: obj.obj_type,
         })
         .collect();
+    // C++ `quest->BuildQuestRewards(packet.Rewards, _session->GetPlayer())`
+    // (GossipDef.cpp:501).
+    let rewards = crate::quest_rewards_block_for_player_like_cpp(host, quest);
 
     host.send_packet(&QuestGiverQuestDetails {
         giver_guid: source_guid,
@@ -485,7 +489,7 @@ pub fn send_represented_quest_giver_quest_details_like_cpp<H: QuestSessionHostLi
         quest_flags: [quest.flags, quest.flags_ex, quest.flags_ex2],
         suggested_party_members: quest.suggested_group_num,
         objectives,
-        rewards: crate::represented_quest_rewards_block_like_cpp(quest),
+        rewards,
         title: quest.log_title.clone(),
         description: quest.quest_description.clone(),
         log_description: quest.log_description.clone(),

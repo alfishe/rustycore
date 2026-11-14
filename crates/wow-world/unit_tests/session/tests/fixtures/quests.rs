@@ -61,6 +61,8 @@ pub(in crate::session::tests) fn test_quest_template(id: u32) -> wow_data::quest
         quest_description: String::new(),
         area_description: String::new(),
         quest_completion_log: String::new(),
+        offer_reward_text: String::new(),
+        request_items_text: String::new(),
         objectives: Vec::new(),
         allowable_races: 0,
         allowable_classes: 0,

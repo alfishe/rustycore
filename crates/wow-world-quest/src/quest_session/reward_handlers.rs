@@ -124,37 +124,10 @@ pub async fn handle_quest_giver_request_reward_with_generator_like_cpp<
         return;
     }
 
-    // Build rewards block for the offer-reward dialog
-    let mut rewards = QuestRewardsBlock::default();
-    rewards.money = quest.reward_money_difficulty as i32;
-    for i in 0..4 {
-        rewards.items[i] = (quest.reward_items[i], quest.reward_amounts[i]);
-    }
-    for i in 0..3 {
-        rewards.display_spells[i] = quest.reward_display_spell[i];
-    }
-    rewards.completion_spell = quest.reward_spell as i32;
-    // Populate choice items for the dialog
-    for i in 0..6 {
-        rewards.choice_items[i] = (
-            quest.reward_choice_items[i].0,
-            quest.reward_choice_items[i].1,
-        );
-    }
-    rewards.choice_item_types = quest.reward_choice_item_types;
-
-    // C#: SendQuestGiverOfferReward(quest, questGiverGUID, true)
-    host.send_packet(&QuestGiverOfferReward {
-        giver_guid: guid,
-        giver_creature_id: quest_giver_creature_id_from_source_like_cpp(guid),
-        quest_id,
-        quest_flags: [quest.flags, quest.flags_ex, quest.flags_ex2],
-        suggested_party_members: quest.suggested_group_num,
-        rewards,
-        title: quest.log_title.clone(),
-        reward_text: quest.quest_completion_log.clone(),
-        auto_launched: false,
-    });
+    // C++ `_player->PlayerTalkClass->SendQuestGiverOfferReward(quest, guid, true)`
+    // (QuestHandler.cpp:436): the shared sender fills Rewards from the player
+    // (`Quest::BuildQuestRewards`) and RewardText from the offer-reward row.
+    crate::send_represented_quest_giver_offer_reward_like_cpp(host, guid, &quest, true);
 }
 
 pub async fn handle_quest_giver_choose_reward_with_generator_like_cpp<
