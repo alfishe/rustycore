@@ -125,6 +125,8 @@ mod misc_3;
 mod misc_4;
 #[path = "character_tests/movement.rs"]
 mod movement;
+#[path = "character_tests/npc_text.rs"]
+mod npc_text;
 #[path = "character_tests/persistence.rs"]
 mod persistence;
 #[path = "character_tests/pet.rs"]

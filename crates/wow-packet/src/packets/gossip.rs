@@ -243,55 +243,62 @@ impl ClientPacket for QueryNpcText {
 
 /// Server response with NPC text data.
 ///
-/// In 3.4.3, NPC text uses a simplified format with probability + broadcast text pairs.
+/// C++ `QueryNPCTextResponse::Write` (QueryPackets.cpp:316-332): `TextID`, the
+/// `Allow` bit (flushed), the size of the option block (64 when `Allow`, else
+/// 0; always written), then all eight probabilities followed by all eight
+/// BroadcastTextIDs. HermesProxy-WOTLK `QueryNPCTextResponse.cs` agrees.
 pub struct QueryNpcTextResponse {
     pub text_id: u32,
     pub allow: bool,
-    /// 8 entries of (Probability f32, BroadcastTextID i32).
-    /// Only written if allow = true.
-    pub entries: [(f32, i32); 8],
+    pub probabilities: [f32; 8],
+    pub broadcast_text_ids: [u32; 8],
 }
 
 impl ServerPacket for QueryNpcTextResponse {
     const OPCODE: ServerOpcodes = ServerOpcodes::QueryNpcTextResponse;
 
     fn write(&self, pkt: &mut WorldPacket) {
-        pkt.write_int32(self.text_id as i32);
+        pkt.write_uint32(self.text_id);
         pkt.write_bit(self.allow);
         pkt.flush_bits();
 
+        // MAX_NPC_TEXT_OPTIONS * (sizeof(float) + sizeof(uint32))
+        pkt.write_int32(if self.allow { 64 } else { 0 });
         if !self.allow {
             return;
         }
-
-        // Size prefix: 8 entries × (4 bytes probability + 4 bytes text ID) = 64 bytes
-        pkt.write_int32(64);
-
-        for &(prob, text_id) in &self.entries {
-            pkt.write_float(prob);
-            pkt.write_int32(text_id);
+        for &probability in &self.probabilities {
+            pkt.write_float(probability);
+        }
+        for &broadcast_text_id in &self.broadcast_text_ids {
+            pkt.write_uint32(broadcast_text_id);
         }
     }
 }
 
 impl QueryNpcTextResponse {
-    /// Create a default response with a single text entry.
-    pub fn with_text(text_id: u32, broadcast_text_id: i32) -> Self {
-        let mut entries = [(0.0f32, 0i32); 8];
-        entries[0] = (1.0, broadcast_text_id);
+    /// C++ `WorldSession::HandleNpcTextQueryOpcode` (QueryHandler.cpp:175-199):
+    /// `Allow` is set by the first non-zero BroadcastTextID.
+    pub fn from_options(
+        text_id: u32,
+        probabilities: [f32; 8],
+        broadcast_text_ids: [u32; 8],
+    ) -> Self {
         Self {
             text_id,
-            allow: true,
-            entries,
+            allow: broadcast_text_ids.iter().any(|&id| id != 0),
+            probabilities,
+            broadcast_text_ids,
         }
     }
 
-    /// Create a "not found" response.
+    /// Response for a TextID without an `npc_text` entry.
     pub fn not_found(text_id: u32) -> Self {
         Self {
             text_id,
             allow: false,
-            entries: [(0.0, 0); 8],
+            probabilities: [0.0; 8],
+            broadcast_text_ids: [0; 8],
         }
     }
 }
@@ -377,17 +384,38 @@ mod tests {
 
     #[test]
     fn npc_text_response_not_found() {
-        let resp = QueryNpcTextResponse::not_found(12345);
-        let bytes = resp.to_bytes();
-        // opcode(2) + text_id(4) + bit(1)
-        assert_eq!(bytes.len(), 7);
+        let bytes = QueryNpcTextResponse::not_found(12345).to_bytes();
+        // opcode(2) + TextID(4) + Allow bit flushed(1) + size 0 (4), as C++ always writes it
+        assert_eq!(bytes, [0x16, 0x29, 0x39, 0x30, 0, 0, 0x00, 0, 0, 0, 0]);
     }
 
     #[test]
-    fn npc_text_response_with_text() {
-        let resp = QueryNpcTextResponse::with_text(1, 0);
+    fn npc_text_response_writes_probabilities_then_broadcast_text_ids() {
+        let resp = QueryNpcTextResponse::from_options(
+            1,
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5],
+            [50429, 0, 0, 0, 0, 0, 0, 7],
+        );
+        assert!(resp.allow);
         let bytes = resp.to_bytes();
-        // opcode(2) + text_id(4) + bit(1) + size(4) + 8*(f32+i32)
         assert_eq!(bytes.len(), 2 + 4 + 1 + 4 + 64);
+        assert_eq!(&bytes[..11], &[0x16, 0x29, 1, 0, 0, 0, 0x80, 64, 0, 0, 0]);
+        let u32_at =
+            |i: usize| u32::from_le_bytes(bytes[11 + 4 * i..15 + 4 * i].try_into().unwrap());
+        // probabilities[0..8] first ...
+        assert_eq!(f32::from_bits(u32_at(0)), 1.0);
+        assert_eq!(f32::from_bits(u32_at(1)), 0.0);
+        assert_eq!(f32::from_bits(u32_at(7)), 0.5);
+        // ... then BroadcastTextID[0..8]
+        assert_eq!(u32_at(8), 50429);
+        assert_eq!(u32_at(9), 0);
+        assert_eq!(u32_at(15), 7);
+    }
+
+    #[test]
+    fn npc_text_response_allow_needs_a_broadcast_text_id() {
+        let resp = QueryNpcTextResponse::from_options(1, [1.0; 8], [0; 8]);
+        assert!(!resp.allow);
+        assert_eq!(resp.to_bytes().len(), 2 + 4 + 1 + 4);
     }
 }

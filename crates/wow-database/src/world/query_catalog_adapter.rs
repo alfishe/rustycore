@@ -2,7 +2,7 @@
 //!
 //! The projections and table order follow `ObjectMgr.cpp` startup loaders:
 //! creature templates/locales at 349/255, page texts/locales at 6143/6189,
-//! and gameobject templates/addons/locales at 7556/7768/7461.
+//! gameobject templates/addons/locales at 7556/7768/7461, and npc texts at 6275.
 
 use std::sync::Arc;
 
@@ -242,6 +242,38 @@ impl MariaDbWorldQueryCatalogPersistenceAdapterLikeCpp {
         )?;
         Ok(PageTextCatalogPersistenceRowsLikeCpp { pages, locales })
     }
+
+    /// ObjectMgr::LoadNPCText (ObjectMgr.cpp:6275-6344) projection; the row
+    /// validation is applied by `wow_data::NpcTextCatalogLikeCpp`.
+    async fn npc_text_rows(&self) -> Result<NpcTextCatalogPersistenceRowsLikeCpp> {
+        let texts = collect_rows_like_cpp(
+            self.world_db
+                .direct_query(concat!(
+                    "SELECT ID, ",
+                    "Probability0, Probability1, Probability2, Probability3, ",
+                    "Probability4, Probability5, Probability6, Probability7, ",
+                    "BroadcastTextID0, BroadcastTextID1, BroadcastTextID2, BroadcastTextID3, ",
+                    "BroadcastTextID4, BroadcastTextID5, BroadcastTextID6, BroadcastTextID7 ",
+                    "FROM npc_text"
+                ))
+                .await?,
+            "npc_text",
+            |row| {
+                let mut probabilities = [0.0f32; 8];
+                let mut broadcast_text_ids = [0u32; 8];
+                for i in 0..8 {
+                    probabilities[i] = row.get_like_cpp(1 + i, "npc_text.Probability")?;
+                    broadcast_text_ids[i] = row.get_like_cpp(9 + i, "npc_text.BroadcastTextID")?;
+                }
+                Ok(NpcTextPersistenceRowLikeCpp {
+                    id: row.get_like_cpp(0, "npc_text.ID")?,
+                    probabilities,
+                    broadcast_text_ids,
+                })
+            },
+        )?;
+        Ok(NpcTextCatalogPersistenceRowsLikeCpp { texts })
+    }
 }
 
 impl WorldQueryCatalogPersistencePortLikeCpp for MariaDbWorldQueryCatalogPersistenceAdapterLikeCpp {
@@ -285,6 +317,22 @@ impl WorldQueryCatalogPersistencePortLikeCpp for MariaDbWorldQueryCatalogPersist
     > {
         Box::pin(async move {
             self.page_rows()
+                .await
+                .map(WorldQueryCatalogLoadOutcomeLikeCpp::Loaded)
+                .unwrap_or_else(|error| WorldQueryCatalogLoadOutcomeLikeCpp::Failed {
+                    reason: error.to_string(),
+                })
+        })
+    }
+
+    fn load_npc_text_catalog_like_cpp(
+        &self,
+    ) -> PersistenceFutureLikeCpp<
+        '_,
+        WorldQueryCatalogLoadOutcomeLikeCpp<NpcTextCatalogPersistenceRowsLikeCpp>,
+    > {
+        Box::pin(async move {
+            self.npc_text_rows()
                 .await
                 .map(WorldQueryCatalogLoadOutcomeLikeCpp::Loaded)
                 .unwrap_or_else(|error| WorldQueryCatalogLoadOutcomeLikeCpp::Failed {

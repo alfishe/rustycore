@@ -126,3 +126,22 @@ pub(crate) async fn load_like_cpp(
 
     Ok((creatures, gameobjects, pages))
 }
+
+/// C++ `ObjectMgr::LoadNPCText` (ObjectMgr.cpp:6275-6344): rows from the
+/// world DB, validated against `sBroadcastTextStore` like C++.
+pub(crate) async fn load_npc_text_like_cpp(
+    port: &dyn WorldQueryCatalogPersistencePortLikeCpp,
+    broadcast_text_exists: impl Fn(u32) -> bool,
+) -> Result<wow_data::NpcTextCatalogLikeCpp> {
+    let rows = loaded(port.load_npc_text_catalog_like_cpp().await)?;
+    Ok(wow_data::NpcTextCatalogLikeCpp::from_rows_like_cpp(
+        rows.texts
+            .into_iter()
+            .map(|row| wow_data::NpcTextRowLikeCpp {
+                id: row.id,
+                probabilities: row.probabilities,
+                broadcast_text_ids: row.broadcast_text_ids,
+            }),
+        broadcast_text_exists,
+    ))
+}

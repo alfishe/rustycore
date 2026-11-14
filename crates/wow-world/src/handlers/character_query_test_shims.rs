@@ -12,6 +12,7 @@
 
 #![cfg(test)]
 
+use wow_packet::packets::gossip::QueryNpcText;
 use wow_packet::packets::query::{
     QueryCorpseLocationFromClient, QueryCorpseTransport, QueryCreature, QueryGameObject,
     QueryPageText, QueryPetName, QueryPlayerNames,
@@ -45,6 +46,12 @@ impl WorldSession {
     pub(crate) async fn handle_query_page_text(&mut self, query: QueryPageText) {
         self.character_query_test_cx_like_cpp()
             .handle_query_page_text(query)
+            .await;
+    }
+
+    pub(crate) async fn handle_query_npc_text(&mut self, query: QueryNpcText) {
+        self.character_query_test_cx_like_cpp()
+            .handle_query_npc_text(query)
             .await;
     }
 
