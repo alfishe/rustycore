@@ -103,13 +103,17 @@ pub struct LoginSetTimeSpeed {
 }
 
 impl LoginSetTimeSpeed {
-    /// Current time with standard speed (1/24 = real-time game day).
+    /// Game speed the client multiplies its clock by: one game minute per real second, as C++
+    /// `Player::SendInitialPacketsBeforeAddToMap` writes it (`static float const TimeSpeed = 0.01666667f`).
+    pub const TIME_SPEED: f32 = 0.016_666_67;
+
+    /// Current time with the standard speed (`TIME_SPEED`).
     pub fn now() -> Self {
         let t = wow_core::GameTime::now().to_packed() as i32;
         Self {
             server_time: t,
             game_time: t,
-            new_speed: 1.0 / 24.0,
+            new_speed: Self::TIME_SPEED,
             server_time_holiday_offset: 0,
             game_time_holiday_offset: 0,
         }

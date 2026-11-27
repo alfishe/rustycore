@@ -611,6 +611,8 @@ fn login_set_time_speed_now() {
     let bytes = pkt.to_bytes();
     // opcode(2) + 4*i32(16) + float(4) = 22
     assert_eq!(bytes.len(), 22);
+    // NewSpeed after ServerTime and GameTime: C++ Player.cpp TimeSpeed 0.01666667f (1/60), not 1/24
+    assert_eq!(&bytes[10..14], &0.016_666_67_f32.to_le_bytes());
 }
 
 #[test]
