@@ -206,6 +206,33 @@ async fn say_preserves_multiple_spaces_when_fake_message_preventing_disabled_lik
     assert_eq!(chat_text(&echo), "hello   fake    spacing");
 }
 
+/// C++ `Chat::SetSender` (`ChatPackets.cpp`): a player sender's packet carries
+/// `SenderAccountGUID = GetSession()->GetAccountGUID()`, the WowAccount GUID of the account.
+#[tokio::test]
+async fn say_carries_the_sender_account_guid_like_cpp() {
+    let sender = ObjectGuid::create_player(1, 385);
+    let (mut session, _player_registry, sender_rx) = session_for_chat_routing_like_cpp(sender);
+
+    session
+        .handle_chat_message(
+            chat_message_packet(ClientOpcodes::ChatMessageSay, "hello"),
+            ChatMsg::Say,
+        )
+        .await;
+
+    let echo = sender_rx.try_recv().expect("sender echo");
+    let mut packet = wow_packet::WorldPacket::from_bytes(&echo);
+    packet.skip_opcode();
+    assert_eq!(packet.read_uint8().unwrap(), ChatMsg::Say as u8);
+    packet.read_uint32().unwrap();
+    assert_eq!(packet.read_packed_guid().unwrap(), sender);
+    assert_eq!(packet.read_packed_guid().unwrap(), ObjectGuid::EMPTY); // SenderGuildGUID
+    assert_eq!(
+        packet.read_packed_guid().unwrap(),
+        ObjectGuid::create_global(wow_core::guid::HighGuid::WowAccount, 0, 1)
+    );
+}
+
 #[tokio::test]
 async fn dead_player_party_chat_is_not_rejected_by_say_alive_gate_like_cpp() {
     let leader = ObjectGuid::create_player(1, 359);

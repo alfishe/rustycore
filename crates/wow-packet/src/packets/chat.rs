@@ -652,6 +652,9 @@ pub struct ChatPkt {
     pub msg_type: ChatMsg,
     pub language: u32,
     pub sender_guid: ObjectGuid,
+    /// C++ `SenderAccountGUID`: the sender session's WowAccount GUID for a player sender,
+    /// empty otherwise (`Chat::SetSender`).
+    pub sender_account_guid: ObjectGuid,
     pub sender_name: String,
     pub target_guid: ObjectGuid,
     pub target_name: String,
@@ -669,7 +672,7 @@ impl ServerPacket for ChatPkt {
         pkt.write_uint32(self.language);
         pkt.write_packed_guid(&self.sender_guid);
         pkt.write_packed_guid(&ObjectGuid::EMPTY); // sender_guild_guid
-        pkt.write_packed_guid(&ObjectGuid::EMPTY); // sender_account_guid
+        pkt.write_packed_guid(&self.sender_account_guid);
         pkt.write_packed_guid(&self.target_guid);
         pkt.write_uint32(self.virtual_realm); // target_virtual_address
         pkt.write_uint32(self.virtual_realm); // sender_virtual_address

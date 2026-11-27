@@ -12,6 +12,17 @@
 use super::*;
 
 impl<'a> ChatHandlerCxLikeCpp<'a> {
+    /// C++ `WorldSession::GetAccountGUID` (`WorldSession.h`): `ObjectGuid::Create<HighGuid::WowAccount>`
+    /// of the session's account, the `SenderAccountGUID` that `Chat::SetSender` (`ChatPackets.cpp`)
+    /// writes for a player sender.
+    pub(super) fn sender_account_guid_like_cpp(&self) -> ObjectGuid {
+        ObjectGuid::create_global(
+            wow_core::guid::HighGuid::WowAccount,
+            0,
+            i64::from(self.hub.shared().core.account_id),
+        )
+    }
+
     /// CMSG_EMOTE — client notifies us it cleared its emote state.
     ///
     /// C++ ref: `WorldSession::HandleEmoteOpcode`.
@@ -89,6 +100,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
                 LANG_ADDON_LIKE_CPP
             },
             sender_guid,
+            sender_account_guid: self.sender_account_guid_like_cpp(),
             sender_name,
             target_guid: ObjectGuid::EMPTY,
             target_name: String::new(),
@@ -205,6 +217,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
             msg_type: chat_type,
             language,
             sender_guid,
+            sender_account_guid: self.sender_account_guid_like_cpp(),
             sender_name,
             target_guid: ObjectGuid::EMPTY,
             target_name: String::new(),
@@ -732,6 +745,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
             msg_type: ChatMsg::Emote,
             language: 0,
             sender_guid,
+            sender_account_guid: self.sender_account_guid_like_cpp(),
             sender_name,
             target_guid: wow_core::ObjectGuid::EMPTY,
             target_name: String::new(),
@@ -927,6 +941,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
             msg_type,
             language: msg.language as u32,
             sender_guid,
+            sender_account_guid: self.sender_account_guid_like_cpp(),
             sender_name,
             target_guid: wow_core::ObjectGuid::EMPTY,
             target_name: String::new(),
@@ -1011,6 +1026,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
                 msg_type: ChatMsg::Ignored,
                 language: 0,
                 sender_guid: reporter_guid,
+                sender_account_guid: self.sender_account_guid_like_cpp(),
                 sender_name: reporter_name.clone(),
                 target_guid: reporter_guid,
                 target_name: reporter_name.clone(),
@@ -1132,6 +1148,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
                 msg_type: ChatMsg::Whisper,
                 language: msg.language as u32,
                 sender_guid,
+                sender_account_guid: self.sender_account_guid_like_cpp(),
                 sender_name: sender_name.clone(),
                 target_guid: ObjectGuid::EMPTY,
                 target_name: target_name.clone(),
@@ -1147,6 +1164,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
                 msg_type: ChatMsg::WhisperInform,
                 language: msg.language as u32,
                 sender_guid,
+                sender_account_guid: self.sender_account_guid_like_cpp(),
                 sender_name: sender_name.clone(),
                 target_guid: ObjectGuid::EMPTY,
                 target_name: target_name.clone(),
@@ -1263,6 +1281,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
                 LANG_ADDON_LIKE_CPP
             },
             sender_guid,
+            sender_account_guid: self.sender_account_guid_like_cpp(),
             sender_name,
             target_guid: target.guid,
             target_name: target.player_name,
@@ -1320,6 +1339,7 @@ impl<'a> ChatHandlerCxLikeCpp<'a> {
             msg_type: ChatMsg::System,
             language: LANG_UNIVERSAL_LIKE_CPP as u32,
             sender_guid: ObjectGuid::EMPTY,
+            sender_account_guid: wow_core::ObjectGuid::EMPTY,
             sender_name: String::new(),
             target_guid: ObjectGuid::EMPTY,
             target_name: String::new(),

@@ -118,6 +118,7 @@ fn system_texts(send_rx: &flume::Receiver<Vec<u8>>, session: &WorldSession) -> V
                     msg_type: wow_packet::packets::chat::ChatMsg::System,
                     language: 0,
                     sender_guid: ObjectGuid::EMPTY,
+                    sender_account_guid: wow_core::ObjectGuid::EMPTY,
                     sender_name: String::new(),
                     target_guid: ObjectGuid::EMPTY,
                     target_name: String::new(),

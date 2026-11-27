@@ -78,6 +78,7 @@ impl WorldAnnouncerLikeCpp {
                     msg_type: ChatMsg::System,
                     language: 0,
                     sender_guid: ObjectGuid::EMPTY,
+                    sender_account_guid: wow_core::ObjectGuid::EMPTY,
                     sender_name: String::new(),
                     target_guid: ObjectGuid::EMPTY,
                     target_name: String::new(),

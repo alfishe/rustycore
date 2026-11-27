@@ -156,6 +156,7 @@ async fn addon_command_delivers_only_when_prefix_registered_like_cpp() {
         msg_type: ChatMsg::Raid,
         language: LANG_ADDON_LIKE_CPP,
         sender_guid: ObjectGuid::create_player(1, 502),
+        sender_account_guid: wow_core::ObjectGuid::EMPTY,
         sender_name: "Sender".to_string(),
         target_guid: ObjectGuid::EMPTY,
         target_name: String::new(),
