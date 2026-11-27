@@ -16,4 +16,8 @@ impl WorldSession {
             .handle_attack_stop(pkt)
             .await;
     }
+
+    pub(crate) fn handle_set_sheathed(&mut self, pkt: WorldPacket) {
+        CombatHandlerCxLikeCpp::new(crate::session::hub_mut(self)).handle_set_sheathed(pkt);
+    }
 }

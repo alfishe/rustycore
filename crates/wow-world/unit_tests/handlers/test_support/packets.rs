@@ -394,6 +394,16 @@ pub(crate) fn stand_state_change_packet(state: u32) -> WorldPacket {
     pkt
 }
 
+/// C++ `WorldPackets::Combat::SetSheathed::Read`: i32 CurrentSheathState, bit Animate.
+pub(crate) fn set_sheathed_packet(state: i32) -> WorldPacket {
+    let mut packet = WorldPacket::new_empty();
+    packet.write_int32(state);
+    packet.write_bit(true);
+    packet.flush_bits();
+    packet.reset_read();
+    packet
+}
+
 pub(crate) fn can_duel_packet(target_guid: ObjectGuid, to_the_death: bool) -> WorldPacket {
     let mut packet = WorldPacket::new_empty();
     packet.write_bytes(&target_guid.to_raw_bytes());

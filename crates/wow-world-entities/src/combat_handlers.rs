@@ -13,14 +13,15 @@
 //! `start_player_attack_like_cpp` is shell-owned — and the host lends that
 //! operation.
 
-use tracing::debug;
-use wow_constants::ClientOpcodes;
+use tracing::{debug, warn};
+use wow_constants::{ClientOpcodes, SheathState};
 use wow_handler::{
     DuplicateHandlerRegistrationLikeCpp, HandlerFuture, PacketHandlerEntry, PacketProcessing,
     RegistryBuilder, SessionStatus,
 };
 use wow_packet::packets::combat::{SAttackStop, SetSheathed};
-use wow_packet::{ClientPacket, WorldPacket};
+use wow_packet::packets::update::{UnitDataValuesDeltaUpdate, UpdateObject};
+use wow_packet::{ClientPacket, ServerPacket, WorldPacket};
 use wow_world_core::session::HubMut;
 
 /// Borrowed inputs of one combat handler invocation.
@@ -59,15 +60,63 @@ impl<'a> CombatHandlerCxLikeCpp<'a> {
 
     /// CMSG_SET_SHEATHED — client changes weapon sheathe state.
     ///
-    /// We just ack silently; the client manages the visual state.
+    /// C++ `WorldSession::HandleSetSheathedOpcode` (`CombatHandler.cpp:68-77`): a state at or
+    /// above `MAX_SHEATH_STATE` is logged and ignored, any other one goes to
+    /// `Unit::SetSheath` (`Unit.cpp:5605`), which writes `UnitData::SheatheState`
+    /// (`UpdateField<uint8, 64, 77>`). The client draws its own weapons at once; the
+    /// values update tells the players around it, and the stored state survives a relog.
     pub fn handle_set_sheathed(&mut self, mut pkt: WorldPacket) {
-        if let Ok(sheathed) = SetSheathed::read(&mut pkt) {
-            debug!(
-                account = self.hub.shared().core.account_id,
-                state = sheathed.current_sheath_state,
-                "SetSheathed"
-            );
+        let Ok(sheathed) = SetSheathed::read(&mut pkt) else {
+            return;
+        };
+        let state = match sheathed.current_sheath_state {
+            0 => SheathState::Unarmed,
+            1 => SheathState::Melee,
+            2 => SheathState::Ranged,
+            other => {
+                warn!(
+                    account = self.hub.shared().core.account_id,
+                    state = other,
+                    "Unknown sheath state"
+                );
+                return;
+            }
+        };
+        let Some(player_guid) = self.hub.shared().core.player_guid() else {
+            return;
+        };
+        let changed = self
+            .hub
+            .shared()
+            .core
+            .mutate_canonical_player_like_cpp(|player| {
+                let unit = player.unit_mut();
+                let previous = unit.sheath_like_cpp();
+                unit.set_sheath_like_cpp(state);
+                previous != state
+            })
+            .unwrap_or(false);
+        debug!(
+            account = self.hub.shared().core.account_id,
+            state = state as u8,
+            changed,
+            "SetSheathed"
+        );
+        if !changed {
+            return;
         }
+        // Until map-owned SendObjectUpdates has real fanout, publish this one live delta like
+        // the stand-state intent does: to the player and to its movement set. The canonical
+        // dirty bit stays set for canonical object-update processing.
+        let mut values = UnitDataValuesDeltaUpdate::default();
+        values.unit_data_mask[2] = (1 << (64 - 64)) | (1 << (77 - 64));
+        values.sheathe_state = state as u8;
+        let (map_id, _) = self.hub.shared().core.current_runtime_map_key_like_cpp();
+        let bytes = UpdateObject::unit_values_update(player_guid, map_id, values).to_bytes();
+        self.hub.shared().core.send_raw_packet(&bytes);
+        self.hub
+            .shared()
+            .broadcast_to_movement_set_like_cpp(bytes, false);
     }
 }
 

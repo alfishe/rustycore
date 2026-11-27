@@ -4,7 +4,7 @@
 //! player capability handler tests.
 
 use super::*;
-use wow_constants::UnitStandStateType;
+use wow_constants::{SheathState, UnitStandStateType};
 use wow_core::GameTime;
 
 #[test]
@@ -888,6 +888,56 @@ async fn repeated_stand_state_still_sends_direct_cpp_packet_without_values_delta
             ),
         }]
     );
+}
+
+/// C++ `WorldSession::HandleSetSheathedOpcode` -> `Unit::SetSheath`: a valid state lands in the
+/// canonical `UnitData::SheatheState` and goes out once as a values update; a repeat sends
+/// nothing; a state at or above `MAX_SHEATH_STATE` is ignored.
+#[tokio::test]
+async fn set_sheathed_sets_canonical_sheathe_state_like_cpp() {
+    let (mut session, send_rx) = make_session();
+    let canonical = shared_canonical_map_manager_for_misc_test();
+    let player_guid = ObjectGuid::create_player(1, 9013);
+    let position = Position::new(1.0, 2.0, 3.0, 0.0);
+    add_canonical_test_player_on_map_for_misc_test(&canonical, player_guid, position, 571, 0);
+    session.set_player_guid(Some(player_guid));
+    session.set_player_map_position_like_cpp(571, position);
+    session.set_canonical_map_manager(Arc::clone(&canonical));
+    let sheath = || {
+        let manager = canonical.lock().unwrap();
+        manager
+            .find_map(571, 0)
+            .unwrap()
+            .map()
+            .get_typed_player(player_guid)
+            .unwrap()
+            .unit()
+            .sheath_like_cpp()
+    };
+
+    for state in [
+        SheathState::Melee,
+        SheathState::Ranged,
+        SheathState::Unarmed,
+    ] {
+        session.handle_set_sheathed(set_sheathed_packet(state as i32));
+        assert_eq!(sheath(), state);
+        let bytes = send_rx.try_recv().expect("SheatheState VALUES update");
+        assert_eq!(
+            WorldPacket::from_bytes(&bytes).server_opcode(),
+            Some(ServerOpcodes::UpdateObject)
+        );
+        assert!(send_rx.try_recv().is_err());
+    }
+
+    session.handle_set_sheathed(set_sheathed_packet(SheathState::Unarmed as i32));
+    assert!(send_rx.try_recv().is_err());
+
+    session.handle_set_sheathed(set_sheathed_packet(SheathState::Melee as i32));
+    let _ = send_rx.try_recv().expect("SheatheState VALUES update");
+    session.handle_set_sheathed(set_sheathed_packet(3));
+    assert_eq!(sheath(), SheathState::Melee);
+    assert!(send_rx.try_recv().is_err());
 }
 
 #[test]
